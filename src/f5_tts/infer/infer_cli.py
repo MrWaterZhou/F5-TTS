@@ -122,7 +122,6 @@ elif vocoder_name == "bigvgan":
 
 vocoder = load_vocoder(vocoder_name=mel_spec_type, is_local=args.load_vocoder_from_local, local_path=vocoder_local_path)
 
-
 # load models
 if model == "F5-TTS":
     model_cls = DiT
@@ -150,7 +149,6 @@ elif model == "E2-TTS":
         ckpt_step = 1200000
         ckpt_file = str(cached_path(f"hf://SWivid/{repo_name}/{exp_name}/model_{ckpt_step}.safetensors"))
         # ckpt_file = f"ckpts/{exp_name}/model_{ckpt_step}.pt"  # .pt | .safetensors; local path
-
 
 print(f"Using {model}...")
 ema_model = load_model(model_cls, model_cfg, ckpt_file, mel_spec_type=mel_spec_type, vocab_file=vocab_file)
@@ -211,8 +209,70 @@ def main_process(ref_audio, ref_text, text_gen, model_obj, mel_spec_type, remove
             print(f.name)
 
 
+from datasets import load_dataset
+
+
+import json
+def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_type, remove_silence, speed):
+    main_voice = {"ref_audio": ref_audio, "ref_text": ref_text}
+    if "voices" not in config:
+        voices = {"main": main_voice}
+    else:
+        voices = config["voices"]
+        voices["main"] = main_voice
+    for voice in voices:
+        voices[voice]["ref_audio"], voices[voice]["ref_text"] = preprocess_ref_audio_text(
+            voices[voice]["ref_audio"], voices[voice]["ref_text"]
+        )
+        print("Voice:", voice)
+        print("Ref_audio:", voices[voice]["ref_audio"])
+        print("Ref_text:", voices[voice]["ref_text"])
+
+    ds = load_dataset('text', data_files='/home/zhou/data3/tts/sharegpt/valid_sentences.txt', split='train')
+    with open('/home/zhou/data3/tts/sharegpt/f5_result.json', 'w', encoding='utf8') as f:
+        for i, text_gen in enumerate(ds['text']):
+            generated_audio_segments = []
+            reg1 = r"(?=\[\w+\])"
+            chunks = re.split(reg1, text_gen)
+            reg2 = r"\[(\w+)\]"
+            for text in chunks:
+                if not text.strip():
+                    continue
+                match = re.match(reg2, text)
+                if match:
+                    voice = match[1]
+                else:
+                    print("No voice tag found, using main.")
+                    voice = "main"
+                if voice not in voices:
+                    print(f"Voice {voice} not found, using main.")
+                    voice = "main"
+                text = re.sub(reg2, "", text)
+                gen_text = text.strip()
+                ref_audio = voices[voice]["ref_audio"]
+                ref_text = voices[voice]["ref_text"]
+                print(f"Voice: {voice}")
+                audio, final_sample_rate, spectragram = infer_process(
+                    ref_audio, ref_text, gen_text, model_obj, vocoder, mel_spec_type=mel_spec_type, speed=speed
+                )
+                generated_audio_segments.append(audio)
+
+            if generated_audio_segments:
+                final_wave = np.concatenate(generated_audio_segments)
+                wave_path = '/home/zhou/data3/tts/sharegpt/f5_audio/{}.wav'.format(i)
+
+                with open(wave_path, "wb") as g:
+                    sf.write(g.name, final_wave, final_sample_rate)
+                    # Remove silence
+                    if remove_silence:
+                        remove_silence_for_generated_wav(g.name)
+                    print(g.name)
+            tmp = {"text": text_gen, "audio": wave_path}
+            f.write(json.dumps(tmp, ensure_ascii=False) + '\n')
+
+
 def main():
-    main_process(ref_audio, ref_text, gen_text, ema_model, mel_spec_type, remove_silence, speed)
+    batch_process(ref_audio, ref_text, gen_text, ema_model, mel_spec_type, remove_silence, speed)
 
 
 if __name__ == "__main__":

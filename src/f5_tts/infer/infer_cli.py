@@ -231,6 +231,7 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
     ds = load_dataset('text', data_files='/home/zhou/data3/tts/sharegpt/valid_sentences.txt', split='train')
     with open('/home/zhou/data3/tts/sharegpt/f5_result.json', 'w', encoding='utf8') as f:
         for i, text_gen in enumerate(ds['text']):
+            text_gen = text_gen.replace(',',' ,')
             generated_audio_segments = []
             reg1 = r"(?=\[\w+\])"
             chunks = re.split(reg1, text_gen)

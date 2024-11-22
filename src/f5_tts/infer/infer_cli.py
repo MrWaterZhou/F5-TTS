@@ -231,45 +231,48 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
     ds = load_dataset('text', data_files='/home/zhou/data3/tts/sharegpt/valid_sentences.txt', split='train')
     with open('/home/zhou/data3/tts/sharegpt/f5_result.json', 'w', encoding='utf8') as f:
         for i, text_gen in enumerate(ds['text']):
-            text_gen = text_gen.replace(',',' ,')
-            generated_audio_segments = []
-            reg1 = r"(?=\[\w+\])"
-            chunks = re.split(reg1, text_gen)
-            reg2 = r"\[(\w+)\]"
-            for text in chunks:
-                if not text.strip():
-                    continue
-                match = re.match(reg2, text)
-                if match:
-                    voice = match[1]
-                else:
-                    print("No voice tag found, using main.")
-                    voice = "main"
-                if voice not in voices:
-                    print(f"Voice {voice} not found, using main.")
-                    voice = "main"
-                text = re.sub(reg2, "", text)
-                gen_text = text.strip()
-                ref_audio = voices[voice]["ref_audio"]
-                ref_text = voices[voice]["ref_text"]
-                print(f"Voice: {voice}")
-                audio, final_sample_rate, spectragram = infer_process(
-                    ref_audio, ref_text, gen_text, model_obj, vocoder, mel_spec_type=mel_spec_type, speed=speed
-                )
-                generated_audio_segments.append(audio)
+            try:
+                text_gen = text_gen.replace(',',' ,')
+                generated_audio_segments = []
+                reg1 = r"(?=\[\w+\])"
+                chunks = re.split(reg1, text_gen)
+                reg2 = r"\[(\w+)\]"
+                for text in chunks:
+                    if not text.strip():
+                        continue
+                    match = re.match(reg2, text)
+                    if match:
+                        voice = match[1]
+                    else:
+                        print("No voice tag found, using main.")
+                        voice = "main"
+                    if voice not in voices:
+                        print(f"Voice {voice} not found, using main.")
+                        voice = "main"
+                    text = re.sub(reg2, "", text)
+                    gen_text = text.strip()
+                    ref_audio = voices[voice]["ref_audio"]
+                    ref_text = voices[voice]["ref_text"]
+                    print(f"Voice: {voice}")
+                    audio, final_sample_rate, spectragram = infer_process(
+                        ref_audio, ref_text, gen_text, model_obj, vocoder, mel_spec_type=mel_spec_type, speed=speed
+                    )
+                    generated_audio_segments.append(audio)
 
-            if generated_audio_segments:
-                final_wave = np.concatenate(generated_audio_segments)
-                wave_path = '/home/zhou/data3/tts/sharegpt/f5_audio/{}.wav'.format(i)
+                if generated_audio_segments:
+                    final_wave = np.concatenate(generated_audio_segments)
+                    wave_path = '/home/zhou/data3/tts/sharegpt/f5_audio/{}.wav'.format(i)
 
-                with open(wave_path, "wb") as g:
-                    sf.write(g.name, final_wave, final_sample_rate)
-                    # Remove silence
-                    if remove_silence:
-                        remove_silence_for_generated_wav(g.name)
-                    print(g.name)
-            tmp = {"text": text_gen, "audio": wave_path}
-            f.write(json.dumps(tmp, ensure_ascii=False) + '\n')
+                    with open(wave_path, "wb") as g:
+                        sf.write(g.name, final_wave, final_sample_rate)
+                        # Remove silence
+                        if remove_silence:
+                            remove_silence_for_generated_wav(g.name)
+                        print(g.name)
+                tmp = {"text": text_gen, "audio": wave_path}
+                f.write(json.dumps(tmp, ensure_ascii=False) + '\n')
+            except:
+                print(gen_text)
 
 
 def main():

@@ -211,8 +211,10 @@ def main_process(ref_audio, ref_text, text_gen, model_obj, mel_spec_type, remove
 
 from datasets import load_dataset
 
-
 import json
+import os
+
+
 def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_type, remove_silence, speed):
     main_voice = {"ref_audio": ref_audio, "ref_text": ref_text}
     if "voices" not in config:
@@ -227,12 +229,14 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
         print("Voice:", voice)
         print("Ref_audio:", voices[voice]["ref_audio"])
         print("Ref_text:", voices[voice]["ref_text"])
+    os.makedirs(text_gen_dataset + '_wavs', exist_ok=True)
+    wave_folder = text_gen_dataset + '_wavs'
 
-    ds = load_dataset('json', data_files='/home/zhou/data3/tts/infer_ds/emotion.json', split='train')
-    with open('/home/zhou/data3/tts/infer_ds/emotion_result.json', 'w', encoding='utf8') as f:
+    ds = load_dataset('json', data_files=text_gen_dataset, split='train')
+    with open(text_gen_dataset + '.json', 'w', encoding='utf8') as f:
         for i, text_gen in enumerate(ds['text']):
             try:
-                text_gen = text_gen.replace(',',' ,')
+                text_gen = text_gen.replace(',', ' ,')
                 generated_audio_segments = []
                 reg1 = r"(?=\[\w+\])"
                 chunks = re.split(reg1, text_gen)
@@ -261,7 +265,7 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
 
                 if generated_audio_segments:
                     final_wave = np.concatenate(generated_audio_segments)
-                    wave_path = '/home/zhou/data3/tts/infer_ds/emotion/{}.wav'.format(i)
+                    wave_path = '{}/{}.wav'.format(wave_folder, i)
 
                     with open(wave_path, "wb") as g:
                         sf.write(g.name, final_wave, final_sample_rate)

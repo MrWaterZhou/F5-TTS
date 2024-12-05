@@ -228,8 +228,8 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
         print("Ref_audio:", voices[voice]["ref_audio"])
         print("Ref_text:", voices[voice]["ref_text"])
 
-    ds = load_dataset('text', data_files='/home/zhou/data3/tts/sharegpt/valid_sentences.txt', split='train')
-    with open('/home/zhou/data3/tts/sharegpt/f5_result.json', 'w', encoding='utf8') as f:
+    ds = load_dataset('json', data_files='/home/zhou/data3/tts/infer_ds/emotion.json', split='train')
+    with open('/home/zhou/data3/tts/infer_ds/emotion_result.json', 'w', encoding='utf8') as f:
         for i, text_gen in enumerate(ds['text']):
             try:
                 text_gen = text_gen.replace(',',' ,')
@@ -261,7 +261,7 @@ def batch_process(ref_audio, ref_text, text_gen_dataset, model_obj, mel_spec_typ
 
                 if generated_audio_segments:
                     final_wave = np.concatenate(generated_audio_segments)
-                    wave_path = '/home/zhou/data3/tts/sharegpt/f5_audio/{}.wav'.format(i)
+                    wave_path = '/home/zhou/data3/tts/infer_ds/emotion/{}.wav'.format(i)
 
                     with open(wave_path, "wb") as g:
                         sf.write(g.name, final_wave, final_sample_rate)
